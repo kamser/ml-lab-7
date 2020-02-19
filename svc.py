@@ -107,10 +107,11 @@ def main():
 
     # Spliteando los set; 70% para el del training y 30% para test
     # Se debe poner de esta forma para que funcione
-    training_set, test_set = train_test_split(features_matrix, test_size=0.30, random_state=42)
+    # TODO: Pasar el vector de labels a binario con un tensor y luego volverlo lista para pasarlo al split
+    training_set_labels, training_set_messages, test_set_labels, test_set_messages = train_test_split(labels, content_msjs, test_size=0.30, random_state=42)
     print("------------------------------------------")
-    print(training_set.shape[0])
-    print(test_set.shape[0])
+    print(training_set_labels.shape[0])
+    print(test_set_labels.shape[0])
 
     model = svm.SVC(kernel="rbf", C=100, gamma=1)
     print("Training model.")

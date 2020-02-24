@@ -207,7 +207,7 @@ def main():
     # Afterwards, you must change the values of C and gamma in the training loop
     # You must train the model and measure the indicated metrics (precision, recall and accuracy)
     # Ask yourself, can this values be improved? Start exploring with the C and gamma parameters.
-    # Use the model that generates the highest performance metrics and run it in the test split
+    # Include the test set inside this training loop
 
     # model = SVC(kernel="rbf", C=1, gamma=1)
     # model.fit(x_train_vectors, y_train)
@@ -228,10 +228,10 @@ def main():
         for gamma_ind in range(len(gamma)):
             model = SVC(kernel="rbf", C=C[C_ind], gamma=gamma[gamma_ind])
             model.fit(x_train_vectors, y_train)
-            pred_y_train = model.predict(x_train_vectors)
-            precision = precision_score(y_train, pred_y_train, average='macro')
-            recall = recall_score(y_train, pred_y_train, average='macro')
-            accuracy = accuracy_score(y_train, pred_y_train)
+            pred_y_test = model.predict(x_test_vectors)
+            precision = precision_score(y_test, pred_y_test, average='macro')
+            recall = recall_score(y_test, pred_y_test, average='macro')
+            accuracy = accuracy_score(y_test, pred_y_test)
             print("Results for model kernel='rbf', C=%d, gamma=%.4f -> Precision: %0.4f, Recall: %0.4f, Accuracy: %0.4f" % (C[C_ind], gamma[gamma_ind], precision, recall, accuracy))
             models.append(model)
             metrics = metrics.append({'precision': precision, 'recall': recall, 'accuracy': accuracy}, ignore_index=True)

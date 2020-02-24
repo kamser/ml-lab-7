@@ -250,6 +250,7 @@ def main():
     print()
 
     print("Model best precision parameters:\n%s" % models[model_ind].get_params())
+    print()
 
     ##############################################################################################
     # Resultados de clasificación, para ambos conjuntos, utilizando el modelo que dio mejor recall
@@ -265,6 +266,7 @@ def main():
     print()
 
     print("Model best recall parameters:\n%s" % models[model_ind].get_params())
+    print()
 
     ################################################################################################
     # Resultados de clasificación, para ambos conjuntos, utilizando el modelo que dio mejor accuracy
@@ -280,6 +282,7 @@ def main():
     print()
 
     print("Model best accuracy parameters:\n%s" % models[model_ind].get_params())
+    print()
 
     ###############################
     # Parameter Tuning, grid search

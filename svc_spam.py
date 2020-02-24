@@ -209,37 +209,55 @@ def main():
     # Ask yourself, can this values be improved? Start exploring with the C and gamma parameters.
     # Include the test set inside this training loop
 
-    # model = SVC(kernel="rbf", C=1, gamma=1)
-    # model.fit(x_train_vectors, y_train)
-    # pred_y_train = model.predict(x_train_vectors)
-    #
-    # precision = precision_score(y_train, pred_y_train, average='macro')
-    # recall = recall_score(y_train, pred_y_train, average='macro')
-    # accuracy = accuracy_score(y_train, pred_y_train)
-    # print("Results for model kernel='rbf', C=%d, gamma=%.4f -> Precision: %0.4f, Recall: %0.4f, Accuracy: %0.4f" %
-    #       (1, 1, precision, recall, accuracy))
-
-    C = (1, 10, 100, 1000)
-    gamma = (1e-1, 1e-2, 1e-3, 1e-4)
+    C = (1, 10, 100, 1000, 10000)
+    gamma = (1, 1e-1, 1e-2, 1e-3, 1e-4)
     models = list()
     metrics = pd.DataFrame(columns=['precision', 'recall', 'accuracy'])
 
+    # Next vary C (regularization parameter) as 10, 100, 1000, 10000.
     for C_ind in range(len(C)):
-        for gamma_ind in range(len(gamma)):
-            model = SVC(kernel="rbf", C=C[C_ind], gamma=gamma[gamma_ind])
+            model = SVC(kernel="rbf", C=C[C_ind])
             model.fit(x_train_vectors, y_train)
             pred_y_test = model.predict(x_test_vectors)
             precision = precision_score(y_test, pred_y_test, average='macro')
             recall = recall_score(y_test, pred_y_test, average='macro')
             accuracy = accuracy_score(y_test, pred_y_test)
-            print("Results for model kernel='rbf', C=%d, gamma=%.4f -> Precision: %0.4f, Recall: %0.4f, Accuracy: %0.4f" % (C[C_ind], gamma[gamma_ind], precision, recall, accuracy))
+            print("Results for model kernel='rbf', C=%d -> Precision: %0.4f, Recall: %0.4f, Accuracy: %0.4f" % (C[C_ind], precision, recall, accuracy))
             models.append(model)
             metrics = metrics.append({'precision': precision, 'recall': recall, 'accuracy': accuracy}, ignore_index=True)
+
+    model_ind_precision, model_ind_recall, model_ind_accuracy = metrics.idxmax()
+
+    if model_ind_precision == model_ind_recall and model_ind_precision == model_ind_accuracy:
+        print("Same model for C")
+
+    model_ind = model_ind_accuracy
+    selected_C = C[model_ind]
+    models = list()
+    metrics = pd.DataFrame(columns=['precision', 'recall', 'accuracy'])
+
+    # At last, lets play with gamma. Add one more parameter gamma = 1.0. Use values 0.1, 0.01, 0.001.
+    for gamma_ind in range(len(gamma)):
+        model = SVC(kernel="rbf", C=selected_C, gamma=gamma[gamma_ind])
+        model.fit(x_train_vectors, y_train)
+        pred_y_test = model.predict(x_test_vectors)
+        precision = precision_score(y_test, pred_y_test, average='macro')
+        recall = recall_score(y_test, pred_y_test, average='macro')
+        accuracy = accuracy_score(y_test, pred_y_test)
+        print("Results for model kernel='rbf', C=%d, gamma=%.4f -> Precision: %0.4f, Recall: %0.4f, Accuracy: %0.4f" %
+              (selected_C, gamma[gamma_ind], precision, recall, accuracy))
+        models.append(model)
+        metrics = metrics.append({'precision': precision, 'recall': recall, 'accuracy': accuracy}, ignore_index=True)
+
+    model_ind_precision, model_ind_recall, model_ind_accuracy = metrics.idxmax()
+
+    if model_ind_precision == model_ind_recall and model_ind_precision == model_ind_accuracy:
+        print("Same model for gamma")
 
     #################################################################################################
     # Resultados de clasificación, para ambos conjuntos, utilizando el modelo que dio mejor precision
     #################################################################################################
-    model_ind = metrics.idxmax()[0]
+    model_ind = model_ind_precision
 
     pred_y_train = models[model_ind].predict(x_train_vectors)
     pred_y_test = models[model_ind].predict(x_test_vectors)
@@ -250,12 +268,11 @@ def main():
     print()
 
     print("Model best precision parameters:\n%s" % models[model_ind].get_params())
-    print()
 
     ##############################################################################################
     # Resultados de clasificación, para ambos conjuntos, utilizando el modelo que dio mejor recall
     ##############################################################################################
-    model_ind = metrics.idxmax()[1]
+    model_ind = model_ind_recall
 
     pred_y_train = models[model_ind].predict(x_train_vectors)
     pred_y_test = models[model_ind].predict(x_test_vectors)
@@ -266,12 +283,11 @@ def main():
     print()
 
     print("Model best recall parameters:\n%s" % models[model_ind].get_params())
-    print()
 
     ################################################################################################
     # Resultados de clasificación, para ambos conjuntos, utilizando el modelo que dio mejor accuracy
     ################################################################################################
-    model_ind = metrics.idxmax()[2]
+    model_ind = model_ind_accuracy
 
     pred_y_train = models[model_ind].predict(x_train_vectors)
     pred_y_test = models[model_ind].predict(x_test_vectors)

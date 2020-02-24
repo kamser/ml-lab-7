@@ -69,7 +69,7 @@ def print_classif_results(actual_y, predicted_y, particular_subset, model_number
     classif_report = classification_report(actual_y, predicted_y, digits=4)
     conf_matrix = confusion_matrix(actual_y, predicted_y)
 
-    print_header('Classification Results%s, %s set' % (", model " + str(model_number) if model_number is not None else "", particular_subset))
+    print_header('Classification Results%s, %s set' % (", model " + model_number if model_number is not None else "", particular_subset))
     print('Classification Report:')
     print(classif_report)
     print()
@@ -144,6 +144,11 @@ def main():
     ####################
     # Model Construction
     ####################
+    # An initial approach should tell you that you could use the default parameters, and measure the performance metrices, including the Confusion Matrix
+    # For the Report use default parameters on training set and measure performance metrics
+
+    # En esta parte se exploran cuáles son los parámetros por defecto
+
     # Label encoding
     # https://towardsdatascience.com/categorical-encoding-using-label-encoding-and-one-hot-encoder-911ef77fb5bd
     label_encoder = LabelEncoder()
@@ -157,20 +162,18 @@ def main():
 
     # Create model
 
-    # Default parameter values:
+    # Default parameter values according to documentation:
     #   C -> default=1.0
     #   kernel  -> default=’rbf’
     #   gamma -> default=’scale’
 
     print("Default parameters, gamma='auto'")
-    # Esto es equivalente a model = SVC() o model = SVC(kernel="rbf", C=1, gamma='auto')
+    # Esto es equivalente a model = SVC() o model = SVC(gamma='auto')
     model_1 = SVC(kernel="rbf", C=1, gamma='auto')
 
     print("Training model...")
-    # Train model
     # The model is trained on the training set
     model_1.fit(x_train_vectors, y_train)
-
     # The model is tested on the training and test sets
     pred_y_train = model_1.predict(x_train_vectors)
     pred_y_test = model_1.predict(x_test_vectors)
@@ -178,14 +181,14 @@ def main():
     ###################################################
     # Resultados de clasificación, para ambos conjuntos
     ###################################################
-    print_classif_results(y_train, pred_y_train, "training", 1)
+    print_classif_results(y_train, pred_y_train, "training", "1")
     print()
-    print_classif_results(y_test, pred_y_test, "test", 1)
+    print_classif_results(y_test, pred_y_test, "test", "1")
     print()
 
     print("Default parameters, gamma='scale'")
-
     # The default value of gamma will change from 'auto' to 'scale' in version 0.22 to account better for unscaled features
+    # Esto es equivalente a model = SVC(gamma='scale')
     model_2 = SVC(kernel="rbf", C=1, gamma='scale')
 
     print("Training model...")
@@ -193,30 +196,10 @@ def main():
     pred_y_train = model_2.predict(x_train_vectors)
     pred_y_test = model_2.predict(x_test_vectors)
 
-    print_classif_results(y_train, pred_y_train, "training", 2)
+    print_classif_results(y_train, pred_y_train, "training", "2")
     print()
-    print_classif_results(y_test, pred_y_test, "test", 2)
+    print_classif_results(y_test, pred_y_test, "test", "2")
     print()
-
-    print("C=1, gamma=1")
-
-    model_3 = SVC(kernel="rbf", C=1)
-
-    print("Training model...")
-    model_3.fit(x_train_vectors, y_train)
-    pred_y_train = model_3.predict(x_train_vectors)
-    pred_y_test = model_3.predict(x_test_vectors)
-
-    print_classif_results(y_train, pred_y_train, "training", 3)
-    print()
-    print_classif_results(y_test, pred_y_test, "test", 3)
-    print()
-
-    precision = precision_score(y_test, pred_y_test, average='macro')
-    recall = recall_score(y_test, pred_y_test, average='macro')
-    accuracy = accuracy_score(y_test, pred_y_test)
-
-    print("%f, %f, %f" % (precision, recall, accuracy))
 
     ###############
     # Training loop
@@ -224,6 +207,18 @@ def main():
     # Afterwards, you must change the values of C and gamma in the training loop
     # You must train the model and measure the indicated metrics (precision, recall and accuracy)
     # Ask yourself, can this values be improved? Start exploring with the C and gamma parameters.
+    # Use the model that generates the highest performance metrics and run it in the test split
+
+    # model = SVC(kernel="rbf", C=1, gamma=1)
+    # model.fit(x_train_vectors, y_train)
+    # pred_y_train = model.predict(x_train_vectors)
+    #
+    # precision = precision_score(y_train, pred_y_train, average='macro')
+    # recall = recall_score(y_train, pred_y_train, average='macro')
+    # accuracy = accuracy_score(y_train, pred_y_train)
+    # print("Results for model kernel='rbf', C=%d, gamma=%.4f -> Precision: %0.4f, Recall: %0.4f, Accuracy: %0.4f" %
+    #       (1, 1, precision, recall, accuracy))
+
     C = (1, 10, 100, 1000)
     gamma = (1e-1, 1e-2, 1e-3, 1e-4)
     models = list()
@@ -232,14 +227,12 @@ def main():
     for C_ind in range(len(C)):
         for gamma_ind in range(len(gamma)):
             model = SVC(kernel="rbf", C=C[C_ind], gamma=gamma[gamma_ind])
-            # The model is trained on the training set
             model.fit(x_train_vectors, y_train)
-            # The model is tested on the test set
-            pred_y_test = model.predict(x_test_vectors)
-            precision = precision_score(y_test, pred_y_test, average='macro')
-            recall = recall_score(y_test, pred_y_test, average='macro')
-            accuracy = accuracy_score(y_test, pred_y_test)
-            print("Results for model kernel='rbf', C=%d, gamma=%.4f -> Precision: %0.3f, Recall: %0.3f, Accuracy: %0.3f" % (C[C_ind], gamma[gamma_ind], precision, recall, accuracy))
+            pred_y_train = model.predict(x_train_vectors)
+            precision = precision_score(y_train, pred_y_train, average='macro')
+            recall = recall_score(y_train, pred_y_train, average='macro')
+            accuracy = accuracy_score(y_train, pred_y_train)
+            print("Results for model kernel='rbf', C=%d, gamma=%.4f -> Precision: %0.4f, Recall: %0.4f, Accuracy: %0.4f" % (C[C_ind], gamma[gamma_ind], precision, recall, accuracy))
             models.append(model)
             metrics = metrics.append({'precision': precision, 'recall': recall, 'accuracy': accuracy}, ignore_index=True)
 
@@ -247,57 +240,58 @@ def main():
     # Resultados de clasificación, para ambos conjuntos, utilizando el modelo que dio mejor precision
     #################################################################################################
     model_ind = metrics.idxmax()[0]
-    print(model_ind)
 
     pred_y_train = models[model_ind].predict(x_train_vectors)
     pred_y_test = models[model_ind].predict(x_test_vectors)
 
-    print_classif_results(y_train, pred_y_train, "training", 4)
+    print_classif_results(y_train, pred_y_train, "training", "best precision")
     print()
-    print_classif_results(y_test, pred_y_test, "test", 4)
+    print_classif_results(y_test, pred_y_test, "test", "best precision")
     print()
 
-    print("Model parameters:\n%s" % models[model_ind].get_params())
+    print("Model best precision parameters:\n%s" % models[model_ind].get_params())
 
     ##############################################################################################
     # Resultados de clasificación, para ambos conjuntos, utilizando el modelo que dio mejor recall
     ##############################################################################################
     model_ind = metrics.idxmax()[1]
-    print(model_ind)
 
     pred_y_train = models[model_ind].predict(x_train_vectors)
     pred_y_test = models[model_ind].predict(x_test_vectors)
 
-    print_classif_results(y_train, pred_y_train, "training", 5)
+    print_classif_results(y_train, pred_y_train, "training", "best recall")
     print()
-    print_classif_results(y_test, pred_y_test, "test", 5)
+    print_classif_results(y_test, pred_y_test, "test", "best recall")
     print()
 
-    print("Model parameters:\n%s" % models[model_ind].get_params())
+    print("Model best recall parameters:\n%s" % models[model_ind].get_params())
 
     ################################################################################################
     # Resultados de clasificación, para ambos conjuntos, utilizando el modelo que dio mejor accuracy
     ################################################################################################
     model_ind = metrics.idxmax()[2]
-    print(model_ind)
 
     pred_y_train = models[model_ind].predict(x_train_vectors)
     pred_y_test = models[model_ind].predict(x_test_vectors)
 
-    print_classif_results(y_train, pred_y_train, "training", 6)
+    print_classif_results(y_train, pred_y_train, "training", "best accuracy")
     print()
-    print_classif_results(y_test, pred_y_test, "test", 6)
+    print_classif_results(y_test, pred_y_test, "test", "best accuracy")
     print()
 
-    print("Model parameters:\n%s" % models[model_ind].get_params())
+    print("Model best accuracy parameters:\n%s" % models[model_ind].get_params())
 
     ###############################
     # Parameter Tuning, grid search
     ###############################
+
+    # Para esta parte se adaptaron las variables que se utilizan en "Parameter estimation using grid search with cross-validation"
+    # Fuente del código original: scikit-learn.org/stable/auto_examples/model_selection/plot_grid_search_digits.html
+
     tuned_parameters = [
         {
             'kernel': ['rbf'],
-            'gamma': [1e-3, 1e-4],
+            'gamma': [1, 1e-1, 1e-2, 1e-3, 1e-4],
             'C': [1, 10, 100, 1000]
         },
         {

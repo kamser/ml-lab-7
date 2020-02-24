@@ -9,6 +9,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.svm import SVC
 from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.metrics import precision_score, recall_score, accuracy_score  # precision, recall and accuracy
 from sklearn.model_selection import GridSearchCV
 
 
@@ -42,6 +43,12 @@ def count_words(texts):
     return counter
 
 
+def extract_features(complete_texts_set, train_texts, test_texts):
+    vectorizer = CountVectorizer()
+    vectorizer.fit_transform(complete_texts_set)
+    return vectorizer.transform(train_texts), vectorizer.transform(test_texts)
+
+
 def print_line(count):
     print('*' * (count + 2))
 
@@ -58,19 +65,20 @@ def print_top_words(top_words):
         print("\t%10s : %5d" % ("\'" + item[0] + "\'", item[1]))
 
 
-def print_classif_results(actual_y, predicted_y, particular_subset):
-    classif_report = classification_report(actual_y, predicted_y)
+def print_classif_results(actual_y, predicted_y, particular_subset, model_number=None):
+    classif_report = classification_report(actual_y, predicted_y, digits=4)
     conf_matrix = confusion_matrix(actual_y, predicted_y)
 
-    print_header('Classification Results, %s set' % particular_subset)
+    print_header('Classification Results%s, %s set' % (", model " + str(model_number) if model_number is not None else "", particular_subset))
     print('Classification Report:')
     print(classif_report)
     print()
     print('Confusion Matrix:')
     print(conf_matrix)
 
-
+global metrics, models
 def main():
+    global metrics, models
     label_column = 'v1'
     message_column = 'v2'
 
@@ -145,35 +153,143 @@ def main():
     x_train, x_test, y_train, y_test = train_test_split(content_msgs, labels_encoded, test_size=0.3, random_state=42)
 
     # Using the documents we are creating feature vectors
-    vectorizer = CountVectorizer()
-    vectorizer.fit_transform(content_msgs)
-    x_train_vectors = vectorizer.transform(x_train)
-    x_test_vectors = vectorizer.transform(x_test)
+    x_train_vectors, x_test_vectors = extract_features(content_msgs, x_train, x_test)
 
     # Create model
-    model = SVC(kernel="rbf", C=100, gamma=1)
-    # model = SVC(gamma='scale')
+
+    # Default parameter values:
+    #   C -> default=1.0
+    #   kernel  -> default=’rbf’
+    #   gamma -> default=’scale’
+
+    print("Default parameters, gamma='auto'")
+    # Esto es equivalente a model = SVC() o model = SVC(kernel="rbf", C=1, gamma='auto')
+    model_1 = SVC(kernel="rbf", C=1, gamma='auto')
 
     print("Training model...")
     # Train model
     # The model is trained on the training set
-    model.fit(x_train_vectors, y_train)
+    model_1.fit(x_train_vectors, y_train)
 
     # The model is tested on the training and test sets
-    pred_y_train = model.predict(x_train_vectors)
-    pred_y_test = model.predict(x_test_vectors)
+    pred_y_train = model_1.predict(x_train_vectors)
+    pred_y_test = model_1.predict(x_test_vectors)
 
-    ##########################################################
-    # Cálculos con classification_report, para ambos conjuntos
-    ##########################################################
-    print_classif_results(y_train, pred_y_train, "training", )
+    ###################################################
+    # Resultados de clasificación, para ambos conjuntos
+    ###################################################
+    print_classif_results(y_train, pred_y_train, "training", 1)
     print()
-    print_classif_results(y_test, pred_y_test, "test")
+    print_classif_results(y_test, pred_y_test, "test", 1)
     print()
 
-    ##################
-    # Parameter Tuning
-    ##################
+    print("Default parameters, gamma='scale'")
+
+    # The default value of gamma will change from 'auto' to 'scale' in version 0.22 to account better for unscaled features
+    model_2 = SVC(kernel="rbf", C=1, gamma='scale')
+
+    print("Training model...")
+    model_2.fit(x_train_vectors, y_train)
+    pred_y_train = model_2.predict(x_train_vectors)
+    pred_y_test = model_2.predict(x_test_vectors)
+
+    print_classif_results(y_train, pred_y_train, "training", 2)
+    print()
+    print_classif_results(y_test, pred_y_test, "test", 2)
+    print()
+
+    print("C=1, gamma=1")
+
+    model_3 = SVC(kernel="rbf", C=1)
+
+    print("Training model...")
+    model_3.fit(x_train_vectors, y_train)
+    pred_y_train = model_3.predict(x_train_vectors)
+    pred_y_test = model_3.predict(x_test_vectors)
+
+    print_classif_results(y_train, pred_y_train, "training", 3)
+    print()
+    print_classif_results(y_test, pred_y_test, "test", 3)
+    print()
+
+    precision = precision_score(y_test, pred_y_test, average='macro')
+    recall = recall_score(y_test, pred_y_test, average='macro')
+    accuracy = accuracy_score(y_test, pred_y_test)
+
+    print("%f, %f, %f" % (precision, recall, accuracy))
+
+    ###############
+    # Training loop
+    ###############
+    # Afterwards, you must change the values of C and gamma in the training loop
+    # You must train the model and measure the indicated metrics (precision, recall and accuracy)
+    # Ask yourself, can this values be improved? Start exploring with the C and gamma parameters.
+    C = (1, 10, 100, 1000)
+    gamma = (1e-1, 1e-2, 1e-3, 1e-4)
+    models = list()
+    metrics = pd.DataFrame(columns=['precision', 'recall', 'accuracy'])
+
+    for C_ind in range(len(C)):
+        for gamma_ind in range(len(gamma)):
+            model = SVC(kernel="rbf", C=C[C_ind], gamma=gamma[gamma_ind])
+            # The model is trained on the training set
+            model.fit(x_train_vectors, y_train)
+            # The model is tested on the test set
+            pred_y_test = model.predict(x_test_vectors)
+            precision = precision_score(y_test, pred_y_test, average='macro')
+            recall = recall_score(y_test, pred_y_test, average='macro')
+            accuracy = accuracy_score(y_test, pred_y_test)
+            print("Results for model kernel='rbf', C=%d, gamma=%.4f -> Precision: %0.3f, Recall: %0.3f, Accuracy: %0.3f" % (C[C_ind], gamma[gamma_ind], precision, recall, accuracy))
+            models.append(model)
+            metrics = metrics.append({'precision': precision, 'recall': recall, 'accuracy': accuracy}, ignore_index=True)
+
+    #################################################################################################
+    # Resultados de clasificación, para ambos conjuntos, utilizando el modelo que dio mejor precision
+    #################################################################################################
+    model_ind = metrics.idxmax()[0]
+    print(model_ind)
+
+    pred_y_train = models[model_ind].predict(x_train_vectors)
+    pred_y_test = models[model_ind].predict(x_test_vectors)
+
+    print_classif_results(y_train, pred_y_train, "training", 4)
+    print()
+    print_classif_results(y_test, pred_y_test, "test", 4)
+    print()
+
+    print("Model parameters:\n%s" % models[model_ind].get_params())
+
+    ##############################################################################################
+    # Resultados de clasificación, para ambos conjuntos, utilizando el modelo que dio mejor recall
+    ##############################################################################################
+    model_ind = metrics.idxmax()[1]
+    print(model_ind)
+
+    pred_y_train = models[model_ind].predict(x_train_vectors)
+    pred_y_test = models[model_ind].predict(x_test_vectors)
+
+    print_classif_results(y_train, pred_y_train, "training", 5)
+    print()
+    print_classif_results(y_test, pred_y_test, "test", 5)
+    print()
+
+    print("Model parameters:\n%s" % models[model_ind].get_params())
+
+    ################################################################################################
+    # Resultados de clasificación, para ambos conjuntos, utilizando el modelo que dio mejor accuracy
+    ################################################################################################
+    model_ind = metrics.idxmax()[2]
+    print(model_ind)
+
+    pred_y_train = models[model_ind].predict(x_train_vectors)
+    pred_y_test = models[model_ind].predict(x_test_vectors)
+
+    print_classif_results(y_train, pred_y_train, "training", 6)
+    print()
+    print_classif_results(y_test, pred_y_test, "test", 6)
+    print()
+
+    print("Model parameters:\n%s" % models[model_ind].get_params())
 
     ###############################
     # Parameter Tuning, grid search
@@ -192,7 +308,7 @@ def main():
     scores = ['precision', 'recall', 'accuracy']
 
     for score in scores:
-        print_header("# Tuning hyper-parameters for %s" % score)
+        print_header("Tuning hyper-parameters for %s" % score)
         print()
 
         clf = GridSearchCV(
@@ -218,7 +334,7 @@ def main():
         print("The scores are computed on the full evaluation set.")
         print()
         y_pred = clf.predict(x_test_vectors)
-        print(classification_report(y_test, y_pred))
+        print(classification_report(y_test, y_pred, digits=4))
         print()
 
 
